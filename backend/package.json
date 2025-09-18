@@ -1,0 +1,31 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "node test-backend.js",
+    "test:health": "curl -s http://localhost:4000/api/health | json_pp"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.8",
+    "@google/genai": "^1.20.0",
+    "@google/generative-ai": "^0.24.1",
+    "@xenova/transformers": "^2.17.2",
+    "axios": "^1.6.0",
+    "chromadb": "^3.0.15",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "nodemon": "^3.1.10",
+    "redis": "^4.7.1",
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
+  }
+}
