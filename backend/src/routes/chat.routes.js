@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const chatbotService = require('../services/chatbot.service');
 const sessionService = require('../services/session.service');
+const redisService = require('../services/redis.service');
 
 const router = express.Router();
 
@@ -32,6 +33,7 @@ router.post('/chat', async (req, res) => {
 
     // Generate session ID if not provided
     const currentSessionId = sessionId || uuidv4();
+    console.log(`💬 Processing message for session: ${currentSessionId.slice(0, 8)}...`);
 
     // Get conversation history for context
     const conversationHistory = await sessionService.getContextForRAG(currentSessionId, 5);
@@ -40,6 +42,7 @@ router.post('/chat', async (req, res) => {
     await sessionService.addMessage(currentSessionId, 'user', message.trim());
 
     // Process query with RAG pipeline
+    console.log(`🔍 Processing query: "${message.trim().substring(0, 50)}..."`);
     const response = await chatbotService.processQuery(message.trim(), conversationHistory);
 
     // Add assistant response to session
@@ -48,13 +51,16 @@ router.post('/chat', async (req, res) => {
       tokensUsed: response.tokensUsed
     });
 
+    console.log(`✅ Response generated for session: ${currentSessionId.slice(0, 8)}...`);
+
     res.json({
       sessionId: currentSessionId,
       response: response.content,
       sources: response.sources,
       metadata: {
         tokensUsed: response.tokensUsed,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        contextLength: conversationHistory.length
       }
     });
 
@@ -119,6 +125,8 @@ router.delete('/session/:id', validateSession, async (req, res) => {
 // POST /api/session/new - Create new session
 router.post('/session/new', (req, res) => {
   const sessionId = sessionService.generateSessionId();
+  console.log(`🆕 Created new session: ${sessionId.slice(0, 8)}...`);
+  
   res.json({
     sessionId,
     message: 'New session created',
@@ -130,7 +138,8 @@ router.post('/session/new', (req, res) => {
 router.get('/health', async (req, res) => {
   try {
     const chatbotHealth = await chatbotService.healthCheck();
-    const redisService = require('../services/redis.service');
+    const sessionCount = await redisService.getSessionCount();
+    const queryCacheCount = await redisService.getQueryCacheCount();
 
     res.json({
       status: 'ok',
@@ -138,15 +147,51 @@ router.get('/health', async (req, res) => {
       services: {
         chatbot: chatbotHealth,
         redis: {
-          status: redisService.isHealthy() ? 'healthy' : 'unhealthy'
+          status: redisService.isHealthy() ? 'healthy' : 'unhealthy',
+          activeSessions: sessionCount,
+          cachedQueries: queryCacheCount
         }
-      }
+      },
+      uptime: process.uptime()
     });
   } catch (error) {
+    console.error('❌ Health check error:', error);
     res.status(503).json({
       status: 'error',
       error: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/stats - Get system statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const cacheStats = await redisService.getCacheStats();
+    const sessionCount = await redisService.getSessionCount();
+    const queryCacheCount = await redisService.getQueryCacheCount();
+
+    res.json({
+      sessions: {
+        active: sessionCount,
+        ttl: process.env.SESSION_TTL || 86400
+      },
+      cache: {
+        queries: queryCacheCount,
+        ttl: process.env.QUERY_CACHE_TTL || 3600,
+        stats: cacheStats
+      },
+      system: {
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        nodeVersion: process.version
+      }
+    });
+  } catch (error) {
+    console.error('❌ Stats error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve statistics',
+      code: 'STATS_ERROR'
     });
   }
 });

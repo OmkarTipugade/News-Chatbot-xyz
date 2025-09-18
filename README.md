@@ -213,6 +213,9 @@ redis-cli info stats
 # View cached keys
 redis-cli keys "query:*" | wc -l
 redis-cli keys "session:*" | wc -l
+
+# Get system statistics via API
+curl http://localhost:4000/api/stats
 ```
 
 ## 🚀 Deployment
