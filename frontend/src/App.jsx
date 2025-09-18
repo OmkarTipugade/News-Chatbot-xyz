@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Send, Bot, User, Loader2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Send, Bot, User, Loader2, RefreshCw, ExternalLink, MessageSquare, Clock } from 'lucide-react';
 import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:4000/api';
@@ -10,6 +10,8 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [sessionStats, setSessionStats] = useState({ messageCount: 0, startTime: null });
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -32,6 +34,7 @@ const App = () => {
       setSessionId(response.data.sessionId);
       setMessages([]);
       setError(null);
+      setSessionStats({ messageCount: 0, startTime: new Date() });
       console.log('New session created:', response.data.sessionId);
     } catch (error) {
       console.error('Failed to create session:', error);
@@ -57,11 +60,16 @@ const App = () => {
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
+      // Simulate typing effect
+      setIsTyping(true);
+      
       const response = await axios.post(`${API_BASE_URL}/chat`, {
         message: userMessage,
         sessionId: sessionId
       });
 
+      setIsTyping(false);
+      
       // Add assistant response to UI
       const assistantMessage = {
         id: Date.now() + 1,
@@ -73,8 +81,15 @@ const App = () => {
       };
       setMessages(prev => [...prev, assistantMessage]);
 
+      // Update session stats
+      setSessionStats(prev => ({ 
+        ...prev, 
+        messageCount: prev.messageCount + 1 
+      }));
+
     } catch (error) {
       console.error('Failed to send message:', error);
+      setIsTyping(false);
       setError('Failed to send message. Please try again.');
       
       // Add error message to UI
@@ -102,6 +117,12 @@ const App = () => {
     createNewSession();
   };
 
+  const formatSessionDuration = () => {
+    if (!sessionStats.startTime) return '';
+    const duration = Math.floor((new Date() - sessionStats.startTime) / 1000 / 60);
+    return duration > 0 ? `${duration}m` : '<1m';
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
@@ -111,7 +132,21 @@ const App = () => {
             <Bot className="w-8 h-8 text-blue-600" />
             <div>
               <h1 className="text-xl font-semibold text-gray-900">News Chatbot</h1>
-              <p className="text-sm text-gray-500">Ask me about recent news</p>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <span>Ask me about recent news</span>
+                {sessionStats.messageCount > 0 && (
+                  <>
+                    <span className="flex items-center space-x-1">
+                      <MessageSquare className="w-3 h-3" />
+                      <span>{sessionStats.messageCount} messages</span>
+                    </span>
+                    <span className="flex items-center space-x-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{formatSessionDuration()}</span>
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <button
@@ -199,7 +234,7 @@ const App = () => {
         ))}
 
         {/* Loading indicator */}
-        {isLoading && (
+        {(isLoading || isTyping) && (
           <div className="flex justify-start">
             <div className="flex mr-3">
               <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
@@ -209,7 +244,9 @@ const App = () => {
             <div className="bg-white rounded-lg px-4 py-3 shadow-sm border">
               <div className="flex items-center space-x-2">
                 <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                <span className="text-gray-500">Thinking...</span>
+                <span className="text-gray-500">
+                  {isTyping ? 'Typing...' : 'Thinking...'}
+                </span>
               </div>
             </div>
           </div>

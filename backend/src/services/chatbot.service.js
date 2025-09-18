@@ -46,11 +46,11 @@ const searchChroma = async (query) => {
     // Check cache first
     const cached = await redisService.getCachedQuery(queryHash);
     if (cached) {
-      console.log('📦 Using cached search results');
+      console.log(`📦 Cache HIT for query: "${query.substring(0, 50)}..."`);
       return cached;
     }
 
-    console.log('🔍 Searching ChromaDB...');
+    console.log(`🔍 Cache MISS - Searching ChromaDB for: "${query.substring(0, 50)}..."`);
     
     // Generate embedding for query
     const emb = await (await loadEmbedder())(query, { 
@@ -67,7 +67,8 @@ const searchChroma = async (query) => {
     });
 
     // Cache results
-    await redisService.cacheQuery(queryHash, results, 3600); // 1 hour cache
+    const cacheTTL = process.env.QUERY_CACHE_TTL || 3600; // 1 hour default
+    await redisService.cacheQuery(queryHash, results, cacheTTL);
 
     return results;
   } catch (error) {

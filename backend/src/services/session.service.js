@@ -53,6 +53,26 @@ class SessionService {
     }));
   }
 
+  // Get session statistics
+  async getSessionStats(sessionId) {
+    const history = await this.getHistory(sessionId);
+    
+    if (history.length === 0) {
+      return { messageCount: 0, startTime: null, lastActivity: null };
+    }
+
+    const userMessages = history.filter(msg => msg.role === 'user');
+    const startTime = history[0]?.timestamp;
+    const lastActivity = history[history.length - 1]?.timestamp;
+
+    return {
+      messageCount: userMessages.length,
+      totalMessages: history.length,
+      startTime,
+      lastActivity
+    };
+  }
+
   // Validate session exists
   async sessionExists(sessionId) {
     const history = await this.getHistory(sessionId);

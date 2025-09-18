@@ -91,6 +91,7 @@ class RedisService {
         ttl,
         JSON.stringify(results)
       );
+      console.log(`📦 Cached query result for ${ttl}s`);
     } catch (error) {
       console.error('Error caching query:', error);
     }
@@ -99,9 +100,30 @@ class RedisService {
   async getCachedQuery(queryHash) {
     try {
       const cached = await this.client.get(`query:${queryHash}`);
-      return cached ? JSON.parse(cached) : null;
+      if (cached) {
+        console.log('📦 Retrieved cached query result');
+        return JSON.parse(cached);
+      }
+      return null;
     } catch (error) {
       console.error('Error getting cached query:', error);
+      return null;
+    }
+  }
+
+  // Performance monitoring
+  async getCacheStats() {
+    try {
+      const info = await this.client.info('memory');
+      const keyspace = await this.client.info('keyspace');
+      
+      return {
+        memory: info,
+        keyspace: keyspace,
+        connected: this.isHealthy()
+      };
+    } catch (error) {
+      console.error('Error getting cache stats:', error);
       return null;
     }
   }

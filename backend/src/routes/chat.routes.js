@@ -72,11 +72,13 @@ router.post('/chat', async (req, res) => {
 router.get('/session/:id/history', validateSession, async (req, res) => {
   try {
     const history = await sessionService.getHistory(req.sessionId);
+    const stats = await sessionService.getSessionStats(req.sessionId);
 
     res.json({
       sessionId: req.sessionId,
       history,
-      count: history.length
+      count: history.length,
+      stats
     });
 
   } catch (error) {

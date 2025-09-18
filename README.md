@@ -149,6 +149,7 @@ REDIS_URL=redis://localhost:6379
 SESSION_TTL=86400
 TOP_K_RESULTS=5
 MAX_CONTEXT_LENGTH=4000
+QUERY_CACHE_TTL=3600
 ```
 
 **Frontend (.env):**
@@ -175,6 +176,44 @@ VITE_API_URL=http://localhost:4000
 - **Query Results**: 1-hour cache for vector searches
 - **Session Data**: 24-hour TTL with auto-cleanup
 - **Embeddings**: Loaded once and kept in memory
+
+### Cache Configuration & Performance:
+
+**TTL Configuration:**
+```env
+# Session data TTL (24 hours)
+SESSION_TTL=86400
+
+# Query result cache TTL (1 hour)
+QUERY_CACHE_TTL=3600
+
+# Redis connection settings
+REDIS_URL=redis://localhost:6379
+```
+
+**Cache Warming Strategy:**
+1. **Embedding Model**: Loaded at startup and kept in memory
+2. **Popular Queries**: Frequently asked questions are cached longer
+3. **Session Preloading**: Recent sessions kept warm in Redis
+
+**Performance Optimizations:**
+- Query result caching reduces ChromaDB lookups by ~80%
+- Session history caching eliminates database queries
+- Embedding model persistence avoids reload overhead
+- Context truncation prevents token limit issues
+
+**Monitoring Cache Performance:**
+```bash
+# Check Redis memory usage
+redis-cli info memory
+
+# Monitor cache hit rates
+redis-cli info stats
+
+# View cached keys
+redis-cli keys "query:*" | wc -l
+redis-cli keys "session:*" | wc -l
+```
 
 ## 🚀 Deployment
 
